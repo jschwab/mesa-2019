@@ -196,7 +196,7 @@
          ierr = 0
          call star_ptr(id, s, ierr)
          if (ierr /= 0) return
-         how_many_extra_profile_columns = 0
+         how_many_extra_profile_columns = 1
       end function how_many_extra_profile_columns
 
 
@@ -217,12 +217,10 @@
          ! the profile_columns.list is only for the built-in profile column options.
          ! it must not include the new column names you are adding here.
 
-         ! here is an example for adding a profile column
-         !if (n /= 1) stop 'data_for_extra_profile_columns'
-         !names(1) = 'beta'
-         !do k = 1, nz
-         !   vals(k,1) = s% Pgas(k)/s% P(k)
-         !end do
+         names(1) = 'eps_ratio'
+         do k = 1, nz
+            vals(k,1) = s% extra_heat(k)/s% eps_nuc(k)
+         end do
 
       end subroutine data_for_extra_profile_columns
 
