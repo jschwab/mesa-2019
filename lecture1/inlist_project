@@ -31,6 +31,11 @@
   ! stop when Tearth > this value
   x_ctrl(1) = 330
 
+  ! controls for lecture1_other_energy
+  use_other_energy = .true.
+  x_ctrl(2) = 0.10 ! L_extra
+  x_ctrl(3) = 0.05 ! Delta_M
+
   ! select output frequency
   photo_interval = 10
   write_header_frequency = 2

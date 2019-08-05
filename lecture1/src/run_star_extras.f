@@ -32,6 +32,35 @@
       ! these routines are called by the standard run_star check_model
       contains
 
+      subroutine lecture1_other_energy(id, ierr)
+         integer, intent(in) :: id
+         integer, intent(out) :: ierr
+         type (star_info), pointer :: s
+         integer :: k
+         real(dp) :: L_extra, Delta_M, Mr
+         ierr = 0
+         call star_ptr(id, s, ierr)
+         if (ierr /= 0) return
+
+         ! allow user-specified values
+         L_extra = s% x_ctrl(2) * Lsun
+         Delta_M = s% x_ctrl(3) * Msun
+
+         do k = 1, s% nz
+            ! m(k) is the enclosed mass at the outer cell edge
+            ! so the mass coordinate at the middle of the cell is
+            Mr = s% m(k) - 0.5 * s% dm(k)
+
+            s% extra_heat(k) = L_extra * exp_cr(-Mr/Delta_M) / Delta_M
+         end do
+
+         ! output rate at which energy is added
+         write(*,'(A, 2ES12.4)') "L_extra (actual, target): ", &
+              dot_product(s% extra_heat(1:s%nz), s% dm(1:s%nz))/Lsun, s% x_ctrl(2)
+
+      end subroutine lecture1_other_energy
+
+
       subroutine extras_controls(id, ierr)
          integer, intent(in) :: id
          integer, intent(out) :: ierr
@@ -42,6 +71,7 @@
 
          ! this is the place to set any procedure pointers you want to change
          ! e.g., other_wind, other_mixing, other_energy  (see star_data.inc)
+         s% other_energy => lecture1_other_energy
 
          ! Uncomment these lines if you wish to use the functions in this file,
          ! otherwise we use a null_ version which does nothing.
