@@ -252,11 +252,19 @@
          integer, intent(in) :: id, id_extra
          integer :: ierr
          type (star_info), pointer :: s
+         real(dp) :: Tearth
          ierr = 0
          call star_ptr(id, s, ierr)
          if (ierr /= 0) return
          extras_finish_step = keep_going
          call store_extra_info(s)
+
+         ! calculate blackbody temperature of earth
+         Tearth = s% Teff * sqrt(s% photosphere_r * Rsun / (2.0 * AU))
+         write(*,*) "Tearth =", Tearth
+
+         ! stop if it exceeds 300 K
+         if (Tearth > 300) extras_finish_step = terminate
 
          ! to save a profile,
             ! s% need_to_save_profiles_now = .true.

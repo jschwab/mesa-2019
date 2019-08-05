@@ -25,8 +25,8 @@
   use_gold_tolerances = .true.
 
   ! stop when the center mass fraction of h1 drops below this limit
-  xa_central_lower_limit_species(1) = 'h1'
-  xa_central_lower_limit(1) = 1d-2
+  ! xa_central_lower_limit_species(1) = 'h1'
+  ! xa_central_lower_limit(1) = 1d-2
 
   ! select output frequency
   photo_interval = 10
