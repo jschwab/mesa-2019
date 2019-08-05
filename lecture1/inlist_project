@@ -32,7 +32,7 @@
   x_ctrl(1) = 330
 
   ! controls for lecture1_other_energy
-  use_other_energy = .true.
+  ! use_other_energy = .true.
   x_ctrl(2) = 0.10 ! L_extra
   x_ctrl(3) = 0.05 ! Delta_M
 

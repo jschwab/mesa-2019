@@ -294,6 +294,9 @@
          ! stop if it exceeds a user-specified temperature (in K)
          if (Tearth > s% x_ctrl(1)) extras_finish_step = terminate
 
+         ! activate other_energy after central hydrogen depletion
+         if (s% center_h1 < 0.01 ) s% use_other_energy = .true.
+
          ! to save a profile,
             ! s% need_to_save_profiles_now = .true.
          ! to update the star log,
