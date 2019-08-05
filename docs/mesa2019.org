@@ -1,0 +1,786 @@
+#+TITLE: MESA Summer School 2019: Lecture 1
+#+AUTHOR: Josiah Schwab and Sunny Wong
+#+OPTIONS: num:nil ^:nil H:6 tags:nil
+#+EXPORT_FILE_NAME: index.html
+#+EXCLUDE_TAGS: solution
+#+SETUPFILE: theme-readtheorg-local.setup
+#+HTML_HEAD: <style>pre.src {background-color: #303030; color: #e5e5e5;}</style>
+#+HTML_MATHJAX: path: https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS_HTML
+* Part 0: Overview
+This guide was written as part of the 2019 MESA summer school.  It is
+an introduction to MESA, with a particular focus on using
+~run_star_extras.f~.  It assumes you are using version r11701 of MESA.
+
+If you're new to Fortran, we prepared a short document with [[file:fortran.html][some
+examples]].  Don't let yourself get hung up by the Fortran; quickly ask
+your classmates and the TAs for help!
+
+There is a version of this document available with [[file:solutions.html][solutions]].  The [[https://github.com/jschwab/mesa-2019/tree/master][git
+repository]] hosting this document contains the full source code used in
+each task, which you can see by looking at the appropriately named tag
+(i.e. part2-task2).
+* Part 1: Running and controlling MESA
+If you've used MESA before, much of this should be familiar.
+** Part 1a: Getting started
+Each time you want to start a MESA project, you should make a new copy
+of the ~star/work~ directory.
+#+BEGIN_EXAMPLE
+  cp -r $MESA_DIR/star/work my_new_project
+#+END_EXAMPLE
+In this case, we have prepared and provided a work directory for
+you. [[file:lecture1.zip][Download]], unpack, and enter this work directory.
+#+BEGIN_EXAMPLE
+  unzip lecture1.zip
+  cd lecture1
+#+END_EXAMPLE
+*** Task 1: Compile and run the provided work directory
+This directory evolves a solar mass star from the middle of the main
+sequence to hydrogen exhaustion. Confirm that you can compile and run
+it.  A window with a few plots should appear.  Familiarize yourself
+with the terminal output.
+
+You can receive valuable MESA bonus points by restarting your run.
+
+**** Answer                                                     :solution:
+#+BEGIN_EXAMPLE
+  ./clean
+  ./mk
+  ./rn
+#+END_EXAMPLE
+**** Bonus Answer                                               :solution:
+During your run, lines line
+#+BEGIN_EXAMPLE
+  save photos/x010 for model 10
+#+END_EXAMPLE
+were output to the terminal.  These photos are MESA restart files.
+
+To restart, use the ~re~ script and specify the name of the photo.
+#+BEGIN_EXAMPLE
+  ./re x010
+#+END_EXAMPLE
+
+
+** Part 1b: Using inlists
+MESA/star has three inlist sections.  Each section contains the
+options for a different aspect of MESA.
++ star_job :: options for the program that evolves the star
++ controls :: options for the MESA star module
++ pgstar :: options for on-screen plotting
+The distinction between ~star_job~ and ~controls~ can be a little
+subtle. We won't discuss ~pgstar~ in this lecture, but Frank will
+later this morning.
+
+~star_job~ contains options that answer questions like:
++ how should MESA obtain the initial model?
++ are there any changes MESA should make to the initial model?
++ what microphysics data should MESA read?
++ where should MESA store its output?
+
+~controls~ contains options that answer questions like:
++ what conditions should cause MESA to stop evolving the model?
++ which angular momentum transport processes should MESA consider?
++ what numerical tolerances should MESA's solvers use?
+
+MESA's many inlist options are documented in the files
++ [[http://mesa.sourceforge.net/star_job_defaults.html][~$MESA_DIR/star/defaults/star_job.defaults~]]
++ [[http://mesa.sourceforge.net/controls_defaults.html][~$MESA_DIR/star/defaults/controls.defaults~]]
++ [[http://mesa.sourceforge.net/pgstar_defaults.html][~$MESA_DIR/star/defaults/pgstar.defaults~]]
+They are roughly sorted into groups of related options.  When you're
+searching for an option, see if it seems to match any of the section
+headings and then look there first.  If that fails, try searching for
+some key words.
+
+Note that inlists can point to other inlists.  This can be useful for
+keeping things organized.  In the ~lecture1~ directory, ~inlist~
+points MESA to ~inlist_project~ and ~inlist_pgstar~.
+
+*** Task 2: Read the documentation
+Use the documentation to learn about the stopping condition that we
+are using (~xa_central_lower_limit~ and
+~xa_central_lower_limit_species~).  Look near this option to see some
+of the other mass fraction based stopping conditions that are
+available.
+
+You can receive valuable MESA bonus points by reporting problems or
+shortcomings in the documentation.
+
+**** Answer                                                     :solution:
+Look at the version of controls.defaults on the web or included in
+MESA.  Note that the main webpage has the documentation for the latest
+release.  You should consult the documentation appropriate to your
+version of MESA.  Either use the online [[http://mesa.sourceforge.net/docs.html][documentation archive]] or
+consult the defaults files included in your version of MESA.
+
+The documentation for [[http://mesa.sourceforge.net/controls_defaults.html#xa_central_lower_limit_species][~xa_central_lower_limit~ and ~xa_central_lower_limit_species~]] says:
+#+BEGIN_QUOTE
+Lower limits on central mass fractions. Stop when central abundance
+drops below this limit. Can have up to num_xa_central_limits of these
+(see star_def.inc for value). xa_central_lower_limit_species contains
+an isotope name as defined in chem_def.f. xa_central_lower_limit
+contains the lower limit value.
+#+END_QUOTE
+
+Nearby you will find similar controls with upper/lower limits on
+average and surface mass fractions.
+**** Bonus Answer                                               :solution:
+Use the email link given at the top of the documentation webpages.
+(This is a long-term assignment.)
+
+** Part 1c: Controlling output
+MESA already knows how to output a tremendous amount of information.
+The two key file types are *history* files, which store the value of
+scalar quantities (e.g., mass, luminosity) at different timesteps and
+*profile* files which store the value of spatially varying quantities
+within the model (e.g., density, pressure) at a single timestep.
+
+Each output file contains two types of data.  First there are
+*headers*, which are single values associated with the file (e.g., the
+version of MESA that generated the file). Then there are *columns*,
+which are lists of numbers (e.g., the luminosity at each timestep or
+the pressure in each cell).
+
+The contents of MESA's output files is not directly controlled via
+inlists.  The default output is set by the files
+#+BEGIN_EXAMPLE
+  $MESA_DIR/star/defaults/history_columns.list
+  $MESA_DIR/star/defaults/profile_columns.list
+#+END_EXAMPLE
+In order to customize the output, you copy these files to your
+work directory.
+#+BEGIN_EXAMPLE
+  cp $MESA_DIR/star/defaults/history_columns.list .
+  cp $MESA_DIR/star/defaults/profile_columns.list .
+#+END_EXAMPLE
+Then, open up ~history_columns.list~ or ~profile_columns.list~ in a
+text editor and comment/uncomment any lines to add/remove the columns
+of interest ('!' is the comment character.)
+
+You can use ~run_star_extras.f~ to define your own columns and headers
+in your history and profile files.  We will discuss this later today.
+*** Task 3: Add some output
+Look at ~LOGS/history.data~ and ~LOGS/profile1.data~ to see what
+header and column information is included by default.  In our later
+exercises, we will be setting the variable ~extra_heat~, which is an
+additional specific heating rate defined at each cell in the star.
+Add this quantity to the output.  Run MESA and confirm that the column
+you want is there.  Its value should be zero.
+
+You can receive valuable MESA bonus points by including the total
+amount of extra heat being added to the star in your output.
+
+**** Answer                                                     :solution:
+Uncomment the following lines in ~profile_columns.list~
+#+BEGIN_EXAMPLE
+  extra_heat
+#+END_EXAMPLE
+and then run MESA
+#+BEGIN_EXAMPLE
+  ./rn
+#+END_EXAMPLE
+**** Bonus Answer                                               :solution:
+Uncomment the following lines in ~history_columns.list~
+#+BEGIN_EXAMPLE
+  extra_L
+#+END_EXAMPLE
+
+
+* Part 2: Using run_star_extras.f
+To activate ~run_star_extras.f~, navigate to the ~lecture1/src~
+directory and open ~run_star_extras.f~ in your text editor of choice.
+The stock version of ~run_star_extras.f~ is quite boring.  It
+"includes" another file which holds the default set of routines.
+#+BEGIN_SRC f90
+  include 'standard_run_star_extras.inc'
+#+END_SRC
+The routines defined in the included file are the ones we will want to
+customize.  Because we want these modifications to apply only to this
+working copy of MESA, and not to MESA as a whole, we want to replace
+this include statement with the contents of the included file.
+
+Delete the aforementioned include line and insert the contents of
+~$MESA_DIR/include/standard_run_star_extras.inc~. (The command to
+insert the contents of a file in emacs is C-x i <filename>, in vim is
+:r <filename>, or you can just copy and paste.)
+
+Before we make any changes, we should check that the code compiles.
+#+BEGIN_EXAMPLE
+cd ..
+./mk
+#+END_EXAMPLE
+If it doesn't compile, double check that you cleanly inserted the file
+and removed the include line.
+
+The two most important things that one needs to know in order to use
+~run_star_extras.f~ effectively are (1) the control flow of a MESA run
+and (2) the contents of the star_info structure.
+
+The different ~run_star_extras.f~ routines get called at different
+points during MESA execution.  Here is a high-level overview of a MESA
+run, written in Fortran-ish pseudocode.
+#+BEGIN_SRC f90
+  subroutine run1_star(...)
+
+     ! star is initialized here
+
+     ! before evolve loop calls:
+     !   extras_controls
+     !   extras_startup
+     call before_evolve_loop(...)
+
+     ! evolve one step per loop
+     evolve_loop: do while(continue_evolve_loop)
+
+        call before_step_loop(...)
+
+        ! after before_step_loop call to:
+        !   extras_start_step
+
+        step_loop: do ! may need to repeat this loop
+
+           if (stop_is_requested(s)) then
+              continue_evolve_loop = .false.
+              result = terminate
+              exit
+           end if
+
+           result = star_evolve_step(...)
+           if (result == keep_going) result = star_check_model(...)
+           if (result == keep_going) result = extras_check_model(...)
+           if (result == keep_going) result = star_pick_next_timestep(...)
+           if (result == keep_going) exit step_loop
+
+           ! redo, retry, or backup must be done inside the step_loop
+         
+           if (result == redo) then
+              result = star_prepare_to_redo(...)
+           end if
+           if (result == retry) then
+              result = star_prepare_to_retry(...)
+           end if
+           if (result == backup) then
+              result = star_do1_backup(...)
+              just_did_backup = .true.
+           else
+              just_did_backup = .false.
+           end if
+           if (result == terminate) then
+              continue_evolve_loop = .false.
+              exit step_loop
+           end if
+
+        end do step_loop
+
+        ! once we get here, the only options are keep_going or terminate.
+
+        ! after_step_loop calls:
+        !   extras_finish_step
+        call after_step_loop(...)
+
+        if (result /= keep_going) then
+           exit evolve_loop
+        end if
+
+        ! write data
+        !
+        ! do_saves calls the following 8 hooks:
+        !   how_many_extra_history_header_items
+        !   data_for_extra_history_header_items
+        !   how_many_extra_history_columns
+        !   data_for_extra_history_columns
+        !   how_many_extra_profile_header_items
+        !   data_for_extra_profile_header_items
+        !   how_many_extra_profile_columns
+        !   data_for_extra_profile_columns
+        call do_saves(...)
+
+     end do evolve_loop
+
+     ! after_evolve_loop calls:
+     !   extras_after_evolve
+     call after_evolve_loop(...)
+
+  end subroutine run1_star
+#+END_SRC
+
+In even more distilled terms, here is a [[file:flowchart.pdf][flowchart]] summarizing this.
+
+[[file:flowchart.pdf][file:flowchart.png]]
+
+The first routine ~extra_controls~ is particularly important.  It is
+the place where you tell MESA exactly which subroutines it should call
+for all of the rest of its hooks.
+
+The heart of MESA is the grey "take step" box, which contains all of
+the machinery by which MESA evaluates and solves the equations of
+stellar structure.
+
+When writing Fortran code for ~run_star_extras.f~, here are a few
+important and useful things to know.
+
+*The star_info structure (and ~star_data.inc~)*
+
+The ~star_info~ structure contains all the information about the star
+that is being evolved.  By convention, the variable name ~s~ is used
+throughout ~run_star_extras.f~ to refer to this structure.  In
+Fortran, the percent (%) operator is used to access the components of
+the structure.  (So you can read ~s% x = 3~ in the same way that you
+would read ~s.x = 3~ in C.)
+
+The ~star_info~ structure contains the stellar model itself (i.e.,
+zoning information, thermodynamic profile, composition profile).
+These components are listed in the file
+~$MESA_DIR/star/public/star_data.inc~.  In addition, ~star_info~
+contains the values for the parameters that you set in your ~controls~
+inlist (i.e., ~initial_mass~, ~xa_central_lower_limit~).  Recall that
+the list of controls is located in [[http://mesa.sourceforge.net/controls_defaults.html][~$MESA_DIR/star/defaults/controls.defaults~]].
+
+*User-specified inlist controls*
+
+There is one set of controls that will prove useful time and time
+again when using ~run_star_extras.f~ and that is ~x_ctrl~,
+~x_integer_ctrl~, and ~x_logical_ctrl~.  These are arrays (of length
+100 by default) of double precision, integer, and boolean values.  You
+can set the elements in your inlists
+#+BEGIN_SRC f90
+  &controls
+    x_ctrl(1) = 3.14
+    x_ctrl(2) = 2.78
+    x_integer_ctrl(1) = 42
+    x_logical_ctrl(1) = .true.
+  / ! end of controls inlist
+#+END_SRC
+and access them later on as part of the star structure (i.e., ~s%
+x_ctrl(1)~, etc.).  With these controls, you can specify parameters in
+your inlists instead of hard-coding them in ~run_star_extras.f~.
+
+*Physical constants (and ~const_def.f90~)*
+
+MESA defines its constants in ~$MESA_DIR/const/public/const_def.f90~.
+MESA uses cgs units unless otherwise noted.  The most common non-cgs
+units are solar units.  Since the ~run_star_extras~ module includes
+the line ~use const_def~, you can already access these definitions.
+Using the built-in constants lets you make sure you're using exactly
+the same definitions as MESA.
+
+** Part 2a: Monitoring your models
+*** Task 0 (Example): Add a stopping condition
+If you assume that the Earth is a perfect blackbody, its equilibrium
+temperature is given by
+
+\begin{equation*}
+T_\oplus = T_\odot \left(\frac{R_\odot}{2\,\rm AU}\right)^{1/2}
+\end{equation*}
+
+Suppose the stellar model we're evolving represents the Sun and I want
+to stop my calculation when the Earth would reach a given temperature.
+A look through ~controls.defaults~ seems to indicate that such a
+condition doesn't already exist.  How do I do this?
+
+First, look at how the routines in ~run_star_extras.f~ fit into a MESA
+run.  To decide whether to stop, I want to check the value of the
+Earth's temperature after each step.  Thus, I want the subroutine that
+is called after each step, which is ~extras_finish_step~.
+
+Now, I need to figure out how to access information about the
+conditions at the stellar photosphere.  I open up
+~star/public/star_data.inc~ and start looking around.  If I search for
+the word photosphere, I can find what I'm looking for ~photosphere_r~
+and ~Teff~.
+
+Recall that MESA defines its constants in
+~$MESA_DIR/const/public/const_def.f~. Looking through this file, I
+find that the constant with the value of the solar radius (in cm) is
+named ~Rsun~.  Note the many other constants that are defined.
+
+#+BEGIN_SRC f90
+  ! returns either keep_going or terminate.
+  ! note: cannot request retry or backup; extras_check_model can do that.
+  integer function extras_finish_step(id, id_extra)
+     integer, intent(in) :: id, id_extra
+     integer :: ierr
+     type (star_info), pointer :: s
+     real(dp) :: Tearth
+     ierr = 0
+     call star_ptr(id, s, ierr)
+     if (ierr /= 0) return
+     extras_finish_step = keep_going
+     call store_extra_info(s)
+
+     ! calculate blackbody temperature of earth
+     Tearth = s% Teff * sqrt(s% photosphere_r * Rsun / (2.0 * AU))
+     write(*,*) "Tearth =", Tearth
+
+     ! stop if it exceeds 300 K
+     if (Tearth > 300) extras_finish_step = terminate
+
+     ! to save a profile,
+        ! s% need_to_save_profiles_now = .true.
+     ! to update the star log,
+        ! s% need_to_update_history_now = .true.
+
+     ! see extras_check_model for information about custom termination codes
+     ! by default, indicate where (in the code) MESA terminated
+     if (extras_finish_step == terminate) s% termination_code = t_extras_finish_step
+  end function extras_finish_step
+#+END_SRC
+
+Now, recompile your working directory
+#+BEGIN_EXAMPLE
+  ./mk
+#+END_EXAMPLE
+You will need to do this step each and every time you edit
+~run_star_extras.f~.  (You will not need to do this when you edit only
+inlist files.)
+
+Now start the model again from the beginning
+#+BEGIN_EXAMPLE
+  ./rn
+#+END_EXAMPLE
+This run should halt around step 33.
+
+*** Task 1: Allow the user to specify a temperature
+Stop when the temperature of Earth exceeds a given value.  Allow the
+user to specify this value in the *inlist*.  A good value to specify
+is 330K, as it should take your model about 100 steps to reach this
+value.
+
+Edit your ~inlist_project~ and comment out the central hydrogen
+abundance stopping condition that was included.  We won't use it
+again.
+
+You can receive valuable MESA bonus points if your routine stops when
+the temperature of the Earth is within a milliKelvin of the specified
+temperature.  (For its built-in stopping conditions, MESA provides the
+ability to control the absolute and/or relative error between the
+model and the specified stopping target; see [[http://mesa.sourceforge.net/controls_defaults.html#when_to_stop_rtol][when_to_stop_rtol]] and
+[[http://mesa.sourceforge.net/controls_defaults.html#when_to_stop_atol][when_to_stop_atol]].)
+
+Hint: Look back at the flow chart.  If you are unhappy with the result
+of a step, where can you ask MESA to try again?
+**** Answer                                                     :solution:
+Modify the termination condition in ~extras_finish_step~ to be
+#+BEGIN_SRC f90
+  ! stop if it exceeds a user-specified temperature (in K)
+  if (Tearth > s% x_ctrl(1)) extras_finish_step = terminate
+#+END_SRC
+and then specify ~x_ctrl~ in your inlist
+#+BEGIN_SRC f90
+  ! stop when Tearth > this value
+    x_ctrl(1) = 330
+#+END_SRC
+**** Bonus Answer                                               :solution:
+The basic code stops at the first timestep where the Earth temperature
+exceeds the threshold.  In order to stop very near the threshold, we
+can first check if we are within the specified tolerance of the
+target.  If so, we're happy and can stop.  If not, and if we've
+already exceeded the target, then ask MESA to "redo" the step with a
+smaller timestep.
+
+In order to redo a timestep, we must use ~extras_check_model~.  At
+each redo, we use half of the previous timestep.
+
+Here is an example routine implementing this approach.
+#+BEGIN_SRC f90
+  ! returns either keep_going, retry, backup, or terminate.
+  integer function extras_check_model(id, id_extra)
+     integer, intent(in) :: id, id_extra
+     integer :: ierr
+     type (star_info), pointer :: s
+
+     real(dp) :: Tearth, dT
+     real(dp), parameter :: dT_target = 1d-3
+
+     ierr = 0
+     call star_ptr(id, s, ierr)
+     if (ierr /= 0) return
+     extras_check_model = keep_going
+
+     Tearth = s% Teff * sqrt(s% photosphere_r * Rsun / (2.0 * AU))
+     write(*,*) "Tearth =", Tearth
+     dT = Tearth - s% x_ctrl(1)
+
+     ! if we've reached target to the given tolerance, then stop
+     ! otherwise, if we've gone too far, redo with a smaller timestep
+     if (abs(dT) .lt. dT_target) then
+        extras_check_model = terminate
+     else
+        if (dT .gt. 0) then
+           extras_check_model = redo
+           s% dt = 0.5d0 * s% dt
+        endif
+     endif
+
+     ! by default, indicate where (in the code) MESA terminated
+     if (extras_check_model == terminate) s% termination_code = t_extras_check_model
+  end function extras_check_model
+#+END_SRC
+
+You could also do this with retry instead of redo.  In a retry, MESA
+will do the step again with the timestep scaled down by
+~timestep_factor_for_retries~ and then not allow any timestep
+increases for ~retry_hold~ steps afterwards.
+
+** Part 2b: Changing input physics
+MESA provides hooks to override or modify many of its built-in
+routines.  (These routines mostly affect things that occur within
+"take step" box of the flowchart.) These are referred to as "other"
+routines.  There are two main steps needed to take advantage of this
+functionality: (1) writing the other routine and (2) instructing MESA
+to use this routine.
+
+Navigate to ~$MESA_DIR/star/other~, where you will see a set of files
+named with the pattern other_*.f90.  In general, find the one
+corresponding to the physics (or numerics) that you want to alter.
+Open one up and read through it.  Many of the files contain comments
+and examples.
+
+Note that we do not want to directly edit these files.  Instead we
+want to copy the template routine into our copy of ~run_star_extras.f~
+and then further modify it there.  The template routines are usually
+named either null_other_* or default_other_*.
+
+In this example, we will focus on ~other_energy.f90~.  Open up this file.
+Copy the subroutine ~default_other_energy~ and paste it into your
+~run_star_extras.f~.  It should be at the same "level" as the other
+subroutines in that file (that is, contained within the
+~run_star_extras~ module.).
+
+#+BEGIN_SRC f90
+  subroutine default_other_energy(id, ierr)
+    use const_def, only: Rsun
+    integer, intent(in) :: id
+    integer, intent(out) :: ierr
+    type (star_info), pointer :: s
+    integer :: k
+    ierr = 0
+    call star_ptr(id, s, ierr)
+    if (ierr /= 0) return
+    s% extra_heat(:) = s% extra_power_source
+    return
+    ! here is an example of calculating extra_heat for each cell.
+    do k = 1, s% nz
+       if (s% r(k) > 0.7*Rsun .and. s% r(k) < 0.9*Rsun) then
+          s% extra_heat(k) = 1d3*exp(-10*(s% r(k) - 0.8*Rsun)**2)
+       end if
+    end do
+  end subroutine default_other_energy
+#+END_SRC
+
+The variable ~s% extra_heat~ is an additional specific (per mass)
+heating rate that will be included.  Note that this routine already
+does something; ~default_other_energy~ is responsible for making the
+[[http://mesa.sourceforge.net/controls_defaults.html#extra_power_source][~extra_power_source~]] control work.  Go ahead and remove that bit, the
+existing example, and rename it to ~lecture1_other_energy~.
+
+In Fortran, you can write expressions that operate on the whole array
+at once (like ~s% extra_heat(:) = s% extra_power_source~).  However,
+it is often simplest to explicitly set the value of ~extra_heat~ (or
+some other array) one value at a time, by using a loop.  While we're
+looking code with a loop, it is a good time to mention that in MESA,
+the outermost zone is at k=1 and the innermost zone is at k=s% nz.
+
+#+BEGIN_SRC f90
+  subroutine lecture1_other_energy(id, ierr)
+    integer, intent(in) :: id
+    integer, intent(out) :: ierr
+    type (star_info), pointer :: s
+    integer :: k
+    ierr = 0
+    call star_ptr(id, s, ierr)
+    if (ierr /= 0) return
+
+    ! calculate extra_heat for each cell
+    do k = 1, s% nz
+       s% extra_heat(k) = 0
+    end do
+  
+  end subroutine lecture1_other_energy
+#+END_SRC
+
+If you read the comments in ~other_energy.f90~ (and you should), you
+can see that the file tells us how to have MESA use our other_*
+routine.  Perform these steps (hint: you will need to edit both your
+~run_star_extras.f~ and your inlists).
+
+*** Task 2: Add an extra energy source in the core of the star
+Use the ~other_energy~ routine to add a heating term
+
+\begin{equation*}
+\texttt{extra_heat} = L_{\mathrm{extra}} \frac{1}{\Delta M} \exp\left(-\frac{M_r}{\Delta M}\right)
+\end{equation*}
+
+where $M_r$ is the enclosed mass.  Good values are \(\Delta M = 0.05
+M_\odot\) and $L_{\mathrm{extra}} = 0.1 L_\odot$.
+
+The lower left panel in the PGSTAR plots displays the value of ~s%
+extra_heat~, so you should be able to easily check if it looks OK.
+
+You can receive valuable MESA bonus points if your routine allows for
+user-specified values of $\Delta M$ and $L_{\mathrm{extra}}$.
+
+**** Answer                                                     :solution:
+First, edit the controls section of your inlist to set the appropriate
+use_other_* flag to ~.true.~ .  In our example, this means adding the
+line
+#+BEGIN_SRC f90
+  use_other_energy = .true.
+#+END_SRC
+
+Second, edit the ~extras_controls~ routine in ~run_star_extras.f~ to
+point ~s% other_energy~ at the routine you want to be executed.
+#+BEGIN_SRC f90
+  subroutine extras_controls(s, ierr)
+     type (star_info), pointer :: s
+     integer, intent(out) :: ierr
+     ierr = 0
+     
+     ! this is the place to set any procedure pointers you want to change
+     ! e.g., other_wind, other_mixing, other_energy  (see star_data.inc)
+     s% other_energy => lecture1_other_energy
+
+     ...
+     
+  end subroutine extras_controls  
+#+END_SRC
+
+Failure to do perform *both* of these is the most common problem
+people encounter when using the other_* hooks.
+
+#+BEGIN_SRC f90
+  subroutine lecture1_other_energy(id, ierr)
+    integer, intent(in) :: id
+    integer, intent(out) :: ierr
+    type (star_info), pointer :: s
+    integer :: k
+    real(dp) :: L_extra, delta_M, Mr
+    ierr = 0
+    call star_ptr(id, s, ierr)
+    if (ierr /= 0) return
+
+    ! allow user-specified values  
+    L_extra = s% x_ctrl(2) * Lsun
+    delta_M = s% x_ctrl(3) * Msun
+
+    do k = 1, s% nz
+       ! m(k) is the enclosed mass at the outer cell edge
+       ! so the mass coordinate at the middle of the cell is 
+       Mr = s% m(k) - 0.5 * s% dm(k)
+
+       s% extra_heat(k) = L_extra * exp_cr(-Mr/delta_M) / delta_M
+    end do
+
+    ! output rate at which energy is added
+    write(*,'(A, 2ES12.4)') "L_extra (actual, target): ", &
+         dot_product(s% extra_heat(1:s%nz), s% dm(1:s%nz))/Lsun, s% x_ctrl(2)
+
+  end subroutine lecture1_other_energy
+#+END_SRC
+** Part 2c: Analyzing your models 
+It is often useful to do some of your analysis in ~run_star_extras~.
+At runtime, you have access to more information about the star than
+will be in the history and profile files.  Additionally, by allowing
+you to only record the final quantities of interest, this can help
+make your MESA output smaller and your subsequent analysis easier.
+(This is particularly useful if you are running large sets of MESA
+models.)
+
+*** Task 3: Compare the extra heating to nuclear heating
+Calculate the local ratio of your extra heating rate to the nuclear
+energy generation rate (~eps_nuc~) and add this quantity your MESA
+output.
+
+You can receive valuable MESA bonus points by adding this quantity to
+the existing PGSTAR plot window.
+**** Answer                                                     :solution:
+First, indicate that you will add an extra profile column by editing
+the function
+#+BEGIN_SRC f90
+  integer function how_many_extra_profile_columns(id, id_extra)
+     ...
+     how_many_extra_profile_columns = 1
+  end function how_many_extra_profile_columns
+#+END_SRC
+The subroutine ~data_for_extra_profile_columns~ already has access to
+the star_info pointer, so you can make use of any of the quantities
+defined in ~$MESA_DIR/star/public/star_data.inc~.  This includes ~s%
+eps_nuc~ and the ~s% extra_heat~ you defined earlier.
+
+The desired ratio can then be calculated in each zone.
+#+BEGIN_SRC f90
+  subroutine data_for_extra_profile_columns(id, id_extra, n, nz, names, vals, ierr)
+     use star_def, only: star_info, maxlen_profile_column_name
+     use const_def, only: dp
+     integer, intent(in) :: id, id_extra, n, nz
+     character (len=maxlen_profile_column_name) :: names(n)
+     real(dp) :: vals(nz,n)
+     integer, intent(out) :: ierr
+     type (star_info), pointer :: s
+     integer :: k
+     ierr = 0
+     call star_ptr(id, s, ierr)
+     if (ierr /= 0) return
+
+     ! note: do NOT add the extra names to profile_columns.list
+     ! the profile_columns.list is only for the built-in profile column options.
+     ! it must not include the new column names you are adding here.
+
+     names(1) = 'eps_ratio'
+     do k = 1, nz
+       vals(k,1) = s% extra_heat(k)/s% eps_nuc(k)
+     end do
+
+  end subroutine data_for_extra_profile_columns
+
+#+END_SRC
+
+**** Bonus Answer                                               :solution:
+The extra profile column acts just like an included profile column.
+It can easily be included in the PGSTAR plot by adding
+#+BEGIN_SRC f90
+  Profile_Panels1_other_yaxis_name(1) = 'eps_ratio'
+#+END_SRC
+to ~inlist_pgstar~.  (The inlist was already set up to display this
+nicely.)  There are infinitely many ways to plot things with PGSTAR;
+we'll learn more about it in Frank's lecture.
+
+
+
+** Part 2d: Changing controls
+Recall that ~star_info~ contains the values for the parameters that
+you set in your ~controls~ inlist.  That also means that you can set
+the value of these parameters by modifying the ~star_info~ structure.
+Since ~run_star_extras~ gives us hooks that can access the ~star_info~ at
+each step, that means we can modify parameters as the run proceeds.
+This often saves us the hassle of stopping, saving a model, editing
+the inlist, and restarting.
+*** Task 4: Turn on other_energy at central hydrogen exhaustion  
+Instead of having the other energy routine always on, activate it only
+after central hydrogen exhaustion has occurred.
+
+You can receive valuable MESA bonus points by thinking about what
+could go wrong after a restart and how to fix it.
+**** Answer                                                     :solution:
+In order to activate the ~other_energy~ routine, we add the following
+line to ~extras_finish_step~
+#+BEGIN_SRC f90
+  ! activate other_energy after central hydrogen depletion
+  if (s% center_h1 < 0.01 ) s% use_other_energy = .true.
+#+END_SRC
+So after the end of the first step where the central hydrogen
+abundance falls below 0.01, the extra heating will occur.
+**** Bonus Answer                                               :solution:
+Imagine restarting from a photo of a model that is already beyond
+central hydrogen depletion.  Because we do not activate the
+~other_energy~ routine until ~extras_check_step~, the first step after
+the restart will use the value in the inlist (which defaults to false)
+and that first step would not have the extra energy source.  Therefore
+this would subtly break the MESA guarantee that runs restarted from
+photos are identical a run that was never stopped.
+
+One way to avoid this issue would be to perform the same 
+#+BEGIN_SRC f90
+  ! activate other_energy after central hydrogen depletion
+  if (s% center_h1 < 0.01 ) s% use_other_energy = .true.
+#+END_SRC
+check in ~extras_startup~
+
