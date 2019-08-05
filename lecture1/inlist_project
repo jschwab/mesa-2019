@@ -28,6 +28,9 @@
   ! xa_central_lower_limit_species(1) = 'h1'
   ! xa_central_lower_limit(1) = 1d-2
 
+  ! stop when Tearth > this value
+  x_ctrl(1) = 330
+
   ! select output frequency
   photo_interval = 10
   write_header_frequency = 2

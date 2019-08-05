@@ -263,8 +263,8 @@
          Tearth = s% Teff * sqrt(s% photosphere_r * Rsun / (2.0 * AU))
          write(*,*) "Tearth =", Tearth
 
-         ! stop if it exceeds 300 K
-         if (Tearth > 300) extras_finish_step = terminate
+         ! stop if it exceeds a user-specified temperature (in K)
+         if (Tearth > s% x_ctrl(1)) extras_finish_step = terminate
 
          ! to save a profile,
             ! s% need_to_save_profiles_now = .true.
